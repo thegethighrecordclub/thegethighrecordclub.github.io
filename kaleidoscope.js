@@ -1,177 +1,328 @@
-$( document ).ready( function () {
+(function() {
+  var myp5;
 
-  var parameters = ( function ( src ) {
-    var params = {}, qryStr = src.split( '?' )[ 1 ];
-    if( qryStr ) {
-      $.each( qryStr.split( '&' ), function ( i, p ) {
-        var ps = p.replace( /\/$/, '' ).split( '=' );
-        var k = ps[ 0 ].replace( /^\?/, '' );
-        params[ k ] = ps[ 1 ] || true;
-      });
-    }
-    return params;
-  })( location.search );
-
-  var x = 0;
-  var y = 0;
-
-  var auto;
-  var auto_x = 0;
-  var auto_y = 0;
-  var auto_throttle;
-
-  // PARAMETER: *s* is the speed of the automatic timeout animation.
-  var s = parameters.s || 3;
-
-  // PARAMETER: *n* is the number of segments.
-  var n = ~~parameters.n || 7;
-  var tiles = '';
-  if ( n ) {
-    for ( var i = 0; i <= n * 2; i++ ) {
-      tiles += [ '<div class="tile t', i, '"><div class="image"></div></div>' ].join( '' );
-    }
-  }
-
-  var $kaleidescope = $( '.kaleidoscope' )
-    .addClass( 'n' + n )
-    .append( tiles );
-
-  var $image = $kaleidescope.find( '.image' );
-
-  var $fullscreen = $( '#fullscreen' );
-  var k = $kaleidescope[ 0 ];
-
-  // PARAMETER: *src* is the URL for an alternate image.
-  var src = parameters.src;
-  if ( src ) {
-    $image.css( 'background-image', [ 'url(', decodeURIComponent( src ), ')' ].join( '' ) );
-  }
-
-  // PARAMETER: *clean* hides the Github and fullscreen links.
-  var clean = parameters.clean;
-  if ( clean ) {
-    $( 'body' ).addClass('clean');
-  }
-
-  // PARAMETER: *opacity* sets opacity (0.0 -> 1.0).
-  var opacity = parseFloat( parameters.opacity );
-  if ( opacity ) {
-    $kaleidescope.css('opacity', 0).fadeTo( 3000, opacity );
-  }
-
-
-  // PARAMETER (undocumented): *mode* changes the animation style.
-  var mode = ~~parameters.mode || 2;
-
-  var moveBackgroundPosition = function(e) {
-   x++;
-    y++;
-
-    var nx = e.pageX, ny = e.pageY;
-    switch ( mode ) {
-      case 1:
-        nx = -x;
-        ny = e.pageY;
-        break;
-      case 2:
-        nx = e.pageX;
-        ny = -y;
-        break;
-      case 3:
-        nx = x;
-        ny = e.pageY;
-        break;
-      case 4:
-        nx = e.pageX;
-        ny = y;
-        break;
-      case 5:
-        nx = x;
-        ny = y;
-        break;
-    }
-
-    move( nx, ny );
-    auto = auto_throttle = false;
-  }
-
-  // Project changes in cursor (x, y) onto the image background position.
-  $kaleidescope.mousemove( moveBackgroundPosition);
-  $kaleidescope.keypress(moveBackgroundPosition);
-
-
-  // An alternate image can be supplied via Dragon Drop.
-  if ( 'draggable' in document.createElement('b') && window.FileReader ) {
-    k.ondragenter = k.ondragover = function( e ) {
-      e.preventDefault();
+  myp5 = new p5(function(p) {
+    p.j = -1;
+    p.cacheTriangle = '';
+    p.img_copy = '';
+    p.triangleSize = 350;
+    p.triangleHeight = (p.triangleSize * p.sqrt(3)) / 2;
+    p.triangles = [];
+    p.cache = '';
+    p.canvas = {};
+    p.cnv = {};
+    p.img = '';
+    p.doGlitch = false;
+    p.offset = 0;
+    p.imgGlitch = '';
+    p.doChangeImg = false;
+    p.offsetChangeImg = 0;
+    p.changeImgG = '';
+    p.preload = function() {
+      p.img = p.loadImage(
+        'https://i1.sndcdn.com/artworks-000214496524-baaopv-t500x500.jpg'
+      );
     };
-
-    k.ondrop = function( e ) {
-      readFile( e.dataTransfer.files[0] );
-      e.preventDefault();
+    p.setup = function() {
+      p.initSetup();
+      setInterval(function() {
+        return p.setDoGlitch();
+      }, 7000);
     };
-  }
-
-  function readFile( file ) {
-    var r = new FileReader();
-    if ( !file.type.match('image\/.*') ) {
-      return false;
-    }
-
-    r.onload = function( e ) {
-      $image.css( 'background-image', [ 'url(', e.target.result, ')' ].join( '' ) );
+    p.initSetup = function() {
+      p.cnv = p.createCanvas(window.innerWidth, window.innerHeight);
+      p.cache = new p.Cache();
+      p.initTriangles();
+      p.img_copy = p.createImage(p.triangleSize, p.triangleSize);
+      p.cacheTriangle = p.createGraphics(p.triangleSize, p.triangleSize);
+      p.cacheTriangle.strokeWeight(0);
+      p.cacheTriangle.triangle(
+        0,
+        0,
+        p.triangleSize,
+        0,
+        p.triangleSize / 2,
+        p.triangleHeight
+      );
+      p.pixelDensity(1);
+      p.imgGlitch = p.createImage(p.img.width, p.img.height);
     };
-
-    r.readAsDataURL( file );
-  }
-
-  // Request Fullscreen for maximum LSD effect
-  $fullscreen.click( function() {
-    if ( document.fullscreenEnabled || document.mozFullScreenEnabled ||
-        document.webkitFullscreenEnabled ) {
-      if ( k.requestFullscreen )       k.requestFullscreen();
-      if ( k.mozRequestFullScreen )    k.mozRequestFullScreen();
-      if ( k.webkitRequestFullscreen ) k.webkitRequestFullscreen();
-    }
-  });
-
-  // Animate all the things!
-  window.requestAnimFrame = ( function( window ) {
-    var suffix = "equestAnimationFrame",
-      rAF = [ "r", "webkitR", "mozR" ].filter( function( val ) {
-        return val + suffix in window;
-      })[ 0 ] + suffix;
-
-    return window[ rAF ]  || function( callback ) {
-      window.setTimeout( function() {
-        callback( +new Date() );
-      }, 1000 / 60 );
+    p.setDoGlitch = function() {
+      p.doGlitch = true;
+      p.imgGlitch.copy(
+        p.img,
+        0,
+        0,
+        p.img.width,
+        p.img.height,
+        0,
+        0,
+        p.imgGlitch.width,
+        p.imgGlitch.height
+      );
     };
-  })( window );
-
-  function animate() {
-    var time = new Date().getTime() * [ '.0000', s ].join( '' );
-    auto_x = Math.sin( time ) * document.body.clientWidth;
-    auto_y++;
-
-    move( auto_x, auto_y );
-    if ( auto ) requestAnimFrame( animate );
-  }
-
-  function move( x, y ) {
-    $image.css( 'background-position', [ x + "px", y + "px" ].join( ' ' ) );
-  }
-
-  // Timer to check for inactivity
-  (function timer() {
-      setTimeout( function() {
-        timer();
-        if( auto && !auto_throttle ) {
-          animate();
-          auto_throttle = true;
-        } else {
-          auto = true;
+    p.glitch = function() {
+      var draw, img;
+      img = p.imgGlitch;
+      draw = function() {
+        var index, x, y;
+        img.loadPixels();
+        y = 0;
+        while (y < img.height) {
+          x = 0;
+          while (x < img.width) {
+            index = (x + y * img.width) * 4;
+            if (
+              img.pixels[index + 4] === void 0 ||
+              img.pixels[index + 9] === void 0
+            ) {
+              img.pixels[index] = 0;
+              img.pixels[index + 1] = 0;
+              img.pixels[index + 2] = 0;
+              img.pixels[index + 3] = 0;
+            } else {
+              img.pixels[index] = img.pixels[index + 4];
+              img.pixels[index + 1] = img.pixels[index + 9];
+            }
+            x++;
+          }
+          y++;
         }
-      }, 5000 );
-  })();
-});
+        return img.updatePixels();
+      };
+      draw();
+      if (p.offset === 5) {
+        p.doGlitch = false;
+        p.offset = 0;
+      }
+    };
+    p.draw = function() {
+      var i, img;
+      //p.print p.doChangeImg
+      img = p.img;
+      if (p.doGlitch) {
+        p.offset += 1;
+        p.glitch();
+        img = p.imgGlitch;
+      }
+      //else
+      p.cache.move();
+      p.cache.cut(img);
+      i = 0;
+      while (i < p.triangles.length) {
+        p.triangles[i].display();
+        i++;
+      }
+      p.changeImg();
+    };
+    p.changeImg = function() {
+      if (p.doChangeImg) {
+        p.doGlitch = false;
+        p.changeImgG.image(p.img_c, -p.img_c.width + p.offsetChangeImg, 0);
+        //p.img.image p.img_c, 0, 0, 100, 100
+        p.img = p.changeImgG;
+        p.offsetChangeImg += 5;
+        if (p.offsetChangeImg - p.img_c.width >= 0) {
+          p.doChangeImg = false;
+        }
+      }
+    };
+    p.kTriangle = function(x, y, angle, scaleX, scaleY) {
+      this.x = x;
+      this.y = y;
+      this.angle = angle;
+      this.scaleX = scaleX;
+      this.scaleY = scaleY;
+      this.display = function() {
+        p.push();
+        p.translate(this.x, this.y);
+        p.scale(this.scaleX, this.scaleY);
+        p.rotate(this.angle);
+        p.image(p.img_copy, 0, 0);
+        p.pop();
+      };
+    };
+    p.Cache = function() {
+      this.x = (p.img.width - p.triangleSize) / 2;
+      this.y = (p.img.height - p.triangleHeight) / 2;
+      this.speedX = 0;
+      this.speedY = 0;
+      this.move = function() {
+        var mx, my;
+        mx = p.mouseX;
+        my = p.mouseY;
+        if (p.mouseX === 0) {
+          mx = this.x;
+          my = this.y;
+        }
+        this.speedX = (mx - this.x) / 20;
+        this.speedY = (my - this.y) / 20;
+        this.x += this.speedX;
+        this.y += this.speedY;
+      };
+      this.cut = function(img) {
+        var mx, my;
+        mx = p.map(this.x, 0, p.width, 0, p.img.width - p.triangleSize);
+        my = p.map(this.y, 0, p.height, 0, p.img.height - p.triangleHeight);
+        p.img_copy.copy(
+          img,
+          mx,
+          my,
+          p.triangleSize,
+          p.triangleSize,
+          0,
+          0,
+          p.triangleSize,
+          p.triangleSize
+        );
+        p.img_copy.mask(p.cacheTriangle);
+      };
+    };
+    p.windowResized = function() {
+      p.resizeCanvas(window.innerWidth, window.innerHeight);
+      p.initSetup();
+    };
+    p.initTriangles = function() {
+      var h, i;
+      h = 0;
+      while (h < p.ceil(p.height / p.triangleHeight / 2)) {
+        i = 0;
+        while (i < p.ceil(p.width / p.triangleSize / 3)) {
+          p.triangles[++p.j] = new p.kTriangle(
+            0 + 3 * p.triangleSize * i,
+            0 + 2 * p.triangleHeight * h,
+            p.PI / 3,
+            -1,
+            1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            0 + 3 * p.triangleSize * i,
+            0 + 2 * p.triangleHeight * h,
+            0,
+            1,
+            1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            (p.triangleSize * 3) / 2 + 3 * p.triangleSize * i,
+            p.triangleHeight + 2 * p.triangleHeight * h,
+            -p.PI / 3,
+            -1,
+            1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            (p.triangleSize * 3) / 2 + 3 * p.triangleSize * i,
+            p.triangleHeight + 2 * p.triangleHeight * h,
+            p.PI / 3,
+            -1,
+            -1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            (p.triangleSize * 3) / 2 + 3 * p.triangleSize * i,
+            p.triangleHeight + 2 * p.triangleHeight * h,
+            0,
+            1,
+            -1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            p.triangleSize * 3 + 3 * p.triangleSize * i,
+            0 + 2 * p.triangleHeight * h,
+            -p.PI / 3,
+            -1,
+            -1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            3 * p.triangleSize + 3 * p.triangleSize * i,
+            0 + 2 * p.triangleHeight * h,
+            p.PI / 3,
+            -1,
+            1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            0 + 3 * p.triangleSize * i,
+            p.triangleHeight * 2 + 2 * p.triangleHeight * h,
+            p.PI / 3,
+            -1,
+            -1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            0 + 3 * p.triangleSize * i,
+            p.triangleHeight * 2 + 2 * p.triangleHeight * h,
+            0,
+            1,
+            -1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            (p.triangleSize * 3) / 2 + 3 * p.triangleSize * i,
+            p.triangleHeight + 2 * p.triangleHeight * h,
+            -p.PI / 3,
+            -1,
+            -1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            (p.triangleSize * 3) / 2 + 3 * p.triangleSize * i,
+            p.triangleHeight + 2 * p.triangleHeight * h,
+            p.PI / 3,
+            -1,
+            1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            (p.triangleSize * 3) / 2 + 3 * p.triangleSize * i,
+            p.triangleHeight + 2 * p.triangleHeight * h,
+            0,
+            1,
+            1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            p.triangleSize * 3 + 3 * p.triangleSize * i,
+            p.triangleHeight * 2 + 2 * p.triangleHeight * h,
+            -p.PI / 3,
+            -1,
+            1
+          );
+          p.triangles[++p.j] = new p.kTriangle(
+            3 * p.triangleSize + 3 * p.triangleSize * i,
+            p.triangleHeight * 2 + 2 * p.triangleHeight * h,
+            p.PI / 3,
+            -1,
+            -1
+          );
+          i++;
+        }
+        h++;
+      }
+    };
+    p5.Renderer2D._copyHelper = function(
+      srcImage,
+      sx,
+      sy,
+      sw,
+      sh,
+      dx,
+      dy,
+      dw,
+      dh
+    ) {
+      var s;
+      if (srcImage instanceof p5.Image) {
+        p.canvas = srcImage.canvas;
+      } else if (srcImage instanceof p5.Graphics) {
+        srcImage.loadPixels();
+        p.canvas = srcImage.elt;
+      }
+      s = p.canvas.width / srcImage.width;
+      this.drawingContext.drawImage(
+        p.canvas,
+        s * sx,
+        s * sy,
+        s * sw,
+        s * sh,
+        dx,
+        dy,
+        dw,
+        dh
+      );
+    };
+  });
+}.call(this));
+
+//# sourceURL=coffeescript
