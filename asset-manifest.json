@@ -1,0 +1,23 @@
+{
+  "files": {
+    "main.css": "/static/css/main.100a634d.chunk.css",
+    "main.js": "/static/js/main.d1e04caf.chunk.js",
+    "main.js.map": "/static/js/main.d1e04caf.chunk.js.map",
+    "runtime-main.js": "/static/js/runtime-main.eba7fc2a.js",
+    "runtime-main.js.map": "/static/js/runtime-main.eba7fc2a.js.map",
+    "static/js/2.bee34798.chunk.js": "/static/js/2.bee34798.chunk.js",
+    "static/js/2.bee34798.chunk.js.map": "/static/js/2.bee34798.chunk.js.map",
+    "index.html": "/index.html",
+    "precache-manifest.c1ff24f33f0b217a73558c4ce8b07040.js": "/precache-manifest.c1ff24f33f0b217a73558c4ce8b07040.js",
+    "service-worker.js": "/service-worker.js",
+    "static/css/main.100a634d.chunk.css.map": "/static/css/main.100a634d.chunk.css.map",
+    "static/js/2.bee34798.chunk.js.LICENSE": "/static/js/2.bee34798.chunk.js.LICENSE",
+    "static/media/index.css": "/static/media/mandala.173eab63.jpg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.eba7fc2a.js",
+    "static/js/2.bee34798.chunk.js",
+    "static/css/main.100a634d.chunk.css",
+    "static/js/main.d1e04caf.chunk.js"
+  ]
+}
